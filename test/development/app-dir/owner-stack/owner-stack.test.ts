@@ -4,6 +4,7 @@ import {
   assertNoRedbox,
   openRedbox,
   getRedboxDescription,
+  hasRedboxCallStack,
 } from 'next-test-utils'
 
 // TODO: parse the location and assert them in the future
@@ -18,6 +19,7 @@ function normalizeStackTrace(trace: string) {
 }
 
 async function getStackFramesContent(browser) {
+  await hasRedboxCallStack(browser)
   const stackFrameElements = await browser.elementsByCss(
     '[data-nextjs-call-stack-frame]'
   )
@@ -45,12 +47,9 @@ async function getStackFramesContent(browser) {
 }
 
 describe('app-dir - owner-stack', () => {
-  const { isTurbopack, next } = nextTestSetup({
+  const { next } = nextTestSetup({
     files: __dirname,
   })
-
-  const isNewDevOverlay =
-    process.env.__NEXT_EXPERIMENTAL_NEW_DEV_OVERLAY === 'true'
 
   it('should log stitched error for browser uncaught errors', async () => {
     const browser = await next.browser('/browser/uncaught')
@@ -69,10 +68,8 @@ describe('app-dir - owner-stack', () => {
       return log.message.includes('Error: browser error')
     }).message
 
-    // TODO(jiwon): Remove this once we have a new dev overlay at stable.
-    if (isNewDevOverlay) {
-      if (process.env.TURBOPACK) {
-        expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
+    if (process.env.TURBOPACK) {
+      expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
           "%o
           %s Error: browser error
           at useThrowError 
@@ -88,31 +85,10 @@ describe('app-dir - owner-stack', () => {
           at renderRootSync 
           at performWorkOnRoot 
           at performWorkOnRootViaSchedulerTask 
-          at MessagePort.performWorkUntilDeadline  The above error occurred in the <Page> component. It was handled by the <DevOverlayErrorBoundary> error boundary."
+          at MessagePort.performWorkUntilDeadline  The above error occurred in the <Page> component. It was handled by the <AppDevOverlayErrorBoundary> error boundary."
         `)
-      } else {
-        expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
-          "%o
-          %s Error: browser error
-          at useThrowError 
-          at useErrorHook 
-          at Page 
-          at react-stack-bottom-frame 
-          at renderWithHooks 
-          at updateFunctionComponent 
-          at beginWork 
-          at runWithFiberInDEV 
-          at performUnitOfWork 
-          at workLoopSync 
-          at renderRootSync 
-          at performWorkOnRoot 
-          at performWorkOnRootViaSchedulerTask 
-          at MessagePort.performWorkUntilDeadline  The above error occurred in the <Page> component. It was handled by the <DevOverlayErrorBoundary> error boundary."
-      `)
-      }
     } else {
-      if (process.env.TURBOPACK) {
-        expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
+      expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
           "%o
           %s Error: browser error
           at useThrowError 
@@ -128,28 +104,8 @@ describe('app-dir - owner-stack', () => {
           at renderRootSync 
           at performWorkOnRoot 
           at performWorkOnRootViaSchedulerTask 
-          at MessagePort.performWorkUntilDeadline  The above error occurred in the <Page> component. It was handled by the <ReactDevOverlay> error boundary."
-        `)
-      } else {
-        expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
-          "%o
-          %s Error: browser error
-          at useThrowError 
-          at useErrorHook 
-          at Page 
-          at react-stack-bottom-frame 
-          at renderWithHooks 
-          at updateFunctionComponent 
-          at beginWork 
-          at runWithFiberInDEV 
-          at performUnitOfWork 
-          at workLoopSync 
-          at renderRootSync 
-          at performWorkOnRoot 
-          at performWorkOnRootViaSchedulerTask 
-          at MessagePort.performWorkUntilDeadline  The above error occurred in the <Page> component. It was handled by the <ReactDevOverlay> error boundary."
+          at MessagePort.performWorkUntilDeadline  The above error occurred in the <Page> component. It was handled by the <AppDevOverlayErrorBoundary> error boundary."
       `)
-      }
     }
   })
 
@@ -166,23 +122,14 @@ describe('app-dir - owner-stack', () => {
     await openRedbox(browser)
 
     const stackFramesContent = await getStackFramesContent(browser)
-    if (isTurbopack) {
-      expect(stackFramesContent).toMatchInlineSnapshot(`
-       "at useThrowError (app/browser/caught/page.js (34:11))
-       at useErrorHook (app/browser/caught/page.js (39:3))
-       at Thrower (app/browser/caught/page.js (29:3))
-       at Inner (app/browser/caught/page.js (23:7))
-       at Page (app/browser/caught/page.js (43:10))"
-      `)
-    } else {
-      expect(stackFramesContent).toMatchInlineSnapshot(`
-       "at useThrowError (app/browser/caught/page.js (34:11))
-       at useErrorHook (app/browser/caught/page.js (39:3))
-       at Thrower (app/browser/caught/page.js (29:3))
-       at Inner (app/browser/caught/page.js (23:8))
-       at Page (app/browser/caught/page.js (43:11))"
-      `)
-    }
+
+    expect(stackFramesContent).toMatchInlineSnapshot(`
+     "at useThrowError (app/browser/caught/page.js (34:11))
+     at useErrorHook (app/browser/caught/page.js (39:3))
+     at Thrower (app/browser/caught/page.js (29:3))
+     at Inner (app/browser/caught/page.js (23:7))
+     at Page (app/browser/caught/page.js (43:10))"
+    `)
 
     expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
       "%o
@@ -221,8 +168,7 @@ describe('app-dir - owner-stack', () => {
       return log.message.includes('Error: ssr error')
     }).message
 
-    if (isNewDevOverlay) {
-      expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
+    expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
        "%o
        %s Error: ssr error
        at useThrowError 
@@ -238,28 +184,8 @@ describe('app-dir - owner-stack', () => {
        at renderRootSync 
        at performWorkOnRoot 
        at performWorkOnRootViaSchedulerTask 
-       at MessagePort.performWorkUntilDeadline  The above error occurred in the <Page> component. It was handled by the <DevOverlayErrorBoundary> error boundary."
+       at MessagePort.performWorkUntilDeadline  The above error occurred in the <Page> component. It was handled by the <AppDevOverlayErrorBoundary> error boundary."
       `)
-    } else {
-      expect(normalizeStackTrace(errorLog)).toMatchInlineSnapshot(`
-       "%o
-       %s Error: ssr error
-       at useThrowError 
-       at useErrorHook 
-       at Page 
-       at react-stack-bottom-frame 
-       at renderWithHooks 
-       at updateFunctionComponent 
-       at beginWork 
-       at runWithFiberInDEV 
-       at performUnitOfWork 
-       at workLoopSync 
-       at renderRootSync 
-       at performWorkOnRoot 
-       at performWorkOnRootViaSchedulerTask 
-       at MessagePort.performWorkUntilDeadline  The above error occurred in the <Page> component. It was handled by the <ReactDevOverlay> error boundary."
-    `)
-    }
   })
 
   it('should capture unhandled promise rejections', async () => {

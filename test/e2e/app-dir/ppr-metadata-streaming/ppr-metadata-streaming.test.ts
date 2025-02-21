@@ -2,14 +2,20 @@ import { nextTestSetup } from 'e2e-utils'
 import cheerio from 'cheerio'
 import { assertNoConsoleErrors } from 'next-test-utils'
 
+// TODO: remove this env once streaming metadata is available for ppr
+process.env.__NEXT_EXPERIMENTAL_PPR = 'true'
+
 function countSubstring(str: string, substr: string): number {
   return str.split(substr).length - 1
 }
 
 describe('ppr-metadata-streaming', () => {
-  const { next, isNextDev, isNextStart, isNextDeploy } = nextTestSetup({
+  const { next, isNextDev, isNextDeploy, skipped } = nextTestSetup({
     files: __dirname,
+    skipDeployment: true,
   })
+
+  if (skipped) return
 
   // No dynamic APIs used in metadata
   describe('static metadata', () => {
@@ -93,8 +99,8 @@ describe('ppr-metadata-streaming', () => {
     })
   })
 
-  // Disable deployment until we support it on infra
-  if (isNextStart && !isNextDeploy) {
+  // Skip the deployment tests for html limited bots
+  if (!isNextDev && !isNextDeploy) {
     // This test is only relevant in production mode, as it's testing PPR results
     describe('html limited bots', () => {
       it('should serve partial static shell when normal UA requests the page', async () => {
