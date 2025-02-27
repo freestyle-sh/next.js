@@ -164,7 +164,7 @@ jobs:
       stepName: 'rust-check'
     secrets: inherit
 
-  rust-doc-check:
+  rustdoc-check:
     name: rustdoc check
     needs: ['changes', 'build-next']
     if: ${{ needs.changes.outputs.docs-only == 'false' }}
@@ -175,7 +175,7 @@ jobs:
       skipInstallBuild: 'yes'
       skipNativeBuild: 'yes'
       afterBuild: ./scripts/deploy-turbopack-docs.sh
-      stepName: 'rust-doc-check'
+      stepName: 'rustdoc-check'
     secrets: inherit
 
   ast-grep:
@@ -382,6 +382,7 @@ jobs:
     with:
       afterBuild: node scripts/test-new-tests.mjs --flake-detection --mode dev --group ${{ matrix.group }}
       stepName: 'test-new-tests-dev-${{matrix.group}}'
+      timeout_minutes: 60 # Increase the default timeout as tests are intentionally run multiple times to detect flakes
 
     secrets: inherit
 
@@ -399,6 +400,7 @@ jobs:
     with:
       afterBuild: node scripts/test-new-tests.mjs --flake-detection --mode start --group ${{ matrix.group }}
       stepName: 'test-new-tests-start-${{matrix.group}}'
+      timeout_minutes: 60 # Increase the default timeout as tests are intentionally run multiple times to detect flakes
 
     secrets: inherit
 
@@ -633,6 +635,7 @@ jobs:
         'test-ppr-integration',
         'test-cargo-unit',
         'rust-check',
+        'rustdoc-check',
         'test-next-swc-wasm',
         'test-turbopack-dev',
         'test-turbopack-integration',
